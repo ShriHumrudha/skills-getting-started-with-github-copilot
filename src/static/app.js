@@ -27,7 +27,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
         const participantItems = details.participants
-          .map((email) => `<li>${escapeHtml(email)}</li>`)
+          .map(
+            (email) => `
+              <li class="participant-item">
+                <span class="participant-email">${escapeHtml(email)}</span>
+                <button
+                  type="button"
+                  class="remove-participant-btn"
+                  data-activity="${escapeHtml(name)}"
+                  data-email="${escapeHtml(email)}"
+                  aria-label="Remove ${escapeHtml(email)} from ${escapeHtml(name)}"
+                  title="Unregister participant"
+                >
+                  🗑️
+                </button>
+              </li>`
+          )
           .join("");
 
         activityCard.innerHTML = `
@@ -58,6 +73,43 @@ document.addEventListener("DOMContentLoaded", () => {
       console.error("Error fetching activities:", error);
     }
   }
+
+  activitiesList.addEventListener("click", async (event) => {
+    const removeButton = event.target.closest(".remove-participant-btn");
+
+    if (!removeButton) {
+      return;
+    }
+
+    const { activity, email } = removeButton.dataset;
+
+    try {
+      const response = await fetch(
+        `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        messageDiv.textContent = result.message;
+        messageDiv.className = "success";
+        await fetchActivities();
+      } else {
+        messageDiv.textContent = result.detail || "An error occurred";
+        messageDiv.className = "error";
+      }
+
+      messageDiv.classList.remove("hidden");
+    } catch (error) {
+      messageDiv.textContent = "Failed to remove participant. Please try again.";
+      messageDiv.className = "error";
+      messageDiv.classList.remove("hidden");
+      console.error("Error removing participant:", error);
+    }
+  });
 
   // Handle form submission
   signupForm.addEventListener("submit", async (event) => {
